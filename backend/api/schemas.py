@@ -98,3 +98,12 @@ class AppSettingsUpdate(BaseModel):
     keep_originals: Optional[bool] = Field(None, example=True, description="Keep original files after conversion")
     cleanup_enabled: Optional[bool] = Field(None, example=True, description="Enable automatic cleanup of old files")
     cleanup_ttl_minutes: Optional[int] = Field(None, example=60, description="Time-to-live in minutes for cleanup")
+
+
+class DefaultFormatMapping(BaseModel):
+    input_format: str = Field(..., example="png", description="Input file format")
+    output_format: str = Field(..., example="jpeg", description="Default output format")
+
+
+class DefaultFormatListResponse(BaseModel):
+    defaults: list[DefaultFormatMapping] = Field(..., description="List of default format mappings")

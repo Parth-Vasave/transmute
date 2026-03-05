@@ -26,12 +26,21 @@ function Converter() {
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [autoDownload, setAutoDownload] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [defaultFormats, setDefaultFormats] = useState<Record<string, string>>({})
 
-  // Load auto-download setting
+  // Load auto-download setting and default format mappings
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setAutoDownload(!!data.auto_download))
+      .catch(() => {})
+    fetch('/api/default-formats')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: { defaults: { input_format: string; output_format: string }[] }) => {
+        const map: Record<string, string> = {}
+        for (const d of data.defaults) map[d.input_format] = d.output_format
+        setDefaultFormats(map)
+      })
       .catch(() => {})
   }, [])
 
@@ -43,16 +52,21 @@ function Converter() {
         const sortedFormats = file.compatible_formats
           ? [...file.compatible_formats].sort()
           : []
+        const inputExt = file.extension?.replace(/^\./, '') || ''
+        const userDefault = defaultFormats[inputExt]
+        const selectedFormat = (userDefault && sortedFormats.includes(userDefault))
+          ? userDefault
+          : sortedFormats[0] || ''
         return {
           file,
-          selectedFormat: sortedFormats[0] || '',
+          selectedFormat,
         }
       })
       setPendingFiles(prev => [...newPendingFiles, ...prev])
       // Clear the location state to prevent re-adding on refresh
       navigate(location.pathname, { replace: true })
     }
-  }, [location.state, location.pathname, navigate])
+  }, [location.state, location.pathname, navigate, defaultFormats])
 
   const processFiles = async (files: File[]) => {
     if (files.length === 0) return
@@ -88,7 +102,11 @@ function Converter() {
       const sortedFormats = fileInfo.compatible_formats
         ? [...fileInfo.compatible_formats].sort()
         : []
-      const defaultFormat = sortedFormats[0] || ''
+      const inputExt = fileInfo.extension?.replace(/^\./, '') || ''
+      const userDefault = defaultFormats[inputExt]
+      const defaultFormat = (userDefault && sortedFormats.includes(userDefault))
+        ? userDefault
+        : sortedFormats[0] || ''
 
       const pending: PendingFile = { file: fileInfo, selectedFormat: defaultFormat }
 

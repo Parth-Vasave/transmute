@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTheme, type ThemeName } from '../ThemeContext'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 
@@ -6,6 +6,17 @@ interface Theme {
   value: string
   label: string
   colors: string[]
+}
+
+interface DefaultFormatMapping {
+  input_format: string
+  output_format: string
+}
+
+interface ConverterInfo {
+  name: string
+  supported_input_formats: string[]
+  supported_output_formats: string[]
 }
 
 const THEMES: Theme[] = [
@@ -65,6 +76,44 @@ function Settings() {
   } | null>(null)
   const themeRef = useRef<HTMLDivElement>(null)
 
+  // Default format mappings
+  const [defaultFormats, setDefaultFormats] = useState<DefaultFormatMapping[]>([])
+  const [conversionMap, setConversionMap] = useState<Record<string, string[]>>({})
+  const [newInputFormat, setNewInputFormat] = useState('')
+  const [newOutputFormat, setNewOutputFormat] = useState('')
+
+  // Build conversion map from converters API (input_format -> sorted output_formats)
+  const loadConversionMap = useCallback(() => {
+    fetch('/api/converters')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: { converters: ConverterInfo[] }) => {
+        const map: Record<string, Set<string>> = {}
+        for (const c of data.converters) {
+          for (const inp of c.supported_input_formats) {
+            for (const out of c.supported_output_formats) {
+              if (inp !== out) {
+                if (!map[inp]) map[inp] = new Set()
+                map[inp].add(out)
+              }
+            }
+          }
+        }
+        const sorted: Record<string, string[]> = {}
+        for (const [k, v] of Object.entries(map)) {
+          sorted[k] = [...v].sort()
+        }
+        setConversionMap(sorted)
+      })
+      .catch(() => {})
+  }, [])
+
+  const loadDefaultFormats = useCallback(() => {
+    fetch('/api/default-formats')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: { defaults: DefaultFormatMapping[] }) => setDefaultFormats(data.defaults))
+      .catch(() => {})
+  }, [])
+
   // Load settings once on mount
   useEffect(() => {
     fetch('/api/settings')
@@ -78,7 +127,9 @@ function Settings() {
         setLoaded(true)
       })
       .catch(() => setLoaded(true)) // fall back to defaults silently
-  }, [setTheme])
+    loadConversionMap()
+    loadDefaultFormats()
+  }, [setTheme, loadConversionMap, loadDefaultFormats])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -109,6 +160,55 @@ function Settings() {
       setSaving(false)
     }
   }
+
+  const handleAddDefaultFormat = async () => {
+    if (!newInputFormat || !newOutputFormat) return
+    try {
+      const response = await fetch('/api/default-formats', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input_format: newInputFormat, output_format: newOutputFormat }),
+      })
+      if (!response.ok) throw new Error()
+      loadDefaultFormats()
+      setNewInputFormat('')
+      setNewOutputFormat('')
+    } catch {
+      setError('Failed to save default format')
+    }
+  }
+
+  const handleUpdateDefaultFormat = async (input_format: string, output_format: string) => {
+    try {
+      const response = await fetch('/api/default-formats', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input_format, output_format }),
+      })
+      if (!response.ok) throw new Error()
+      loadDefaultFormats()
+    } catch {
+      setError('Failed to update default format')
+    }
+  }
+
+  const handleDeleteDefaultFormat = async (input_format: string) => {
+    try {
+      const response = await fetch(`/api/default-formats/${encodeURIComponent(input_format)}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error()
+      loadDefaultFormats()
+    } catch {
+      setError('Failed to delete default format')
+    }
+  }
+
+  // Available input formats that don't already have a default set
+  const availableInputFormats = Object.keys(conversionMap)
+    .filter(f => !defaultFormats.some(d => d.input_format === f))
+    .sort()
+
+  // When the new input format changes, auto-select the first available output
+  const newOutputOptions = newInputFormat ? (conversionMap[newInputFormat] || []) : []
 
   const handleClearConversions = () => {
     setConfirmDialog({
@@ -307,6 +407,17 @@ function Settings() {
             </div>
           </section>
 
+          {/* Save */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-success hover:bg-success-dark text-white font-semibold py-2 px-8 rounded-lg transition duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
+            </button>
+          </div>
+
           {/* Data Management */}
           <section className="bg-surface-light rounded-xl p-6">
             <h2 className="text-lg font-semibold text-text mb-4">Data Management</h2>
@@ -343,17 +454,95 @@ function Settings() {
             </div>
           </section>
 
-        </div>
+          {/* Default Formats */}
+          <section className="bg-surface-light rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-text mb-1">Default Formats</h2>
+            <p className="text-text-muted text-sm mb-4">Set default output formats for specific input file types. These can still be overridden per file.</p>
 
-        {/* Save */}
-        <div className="mt-8 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-success hover:bg-success-dark text-white font-semibold py-2 px-8 rounded-lg transition duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
-          </button>
+            {defaultFormats.length > 0 && (
+              <div className="mb-4 overflow-hidden rounded-lg border border-surface-dark">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-surface-dark">
+                      <th className="text-left text-text-muted font-medium px-4 py-2.5">Input Format</th>
+                      <th className="text-left text-text-muted font-medium px-4 py-2.5">Default Output</th>
+                      <th className="w-10" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {defaultFormats.map(d => (
+                      <tr key={d.input_format} className="border-t border-surface-dark">
+                        <td className="px-4 py-2.5 text-text font-mono">{d.input_format}</td>
+                        <td className="px-4 py-2.5">
+                          <select
+                            value={d.output_format}
+                            onChange={e => handleUpdateDefaultFormat(d.input_format, e.target.value)}
+                            className="bg-surface-dark text-text border border-surface-light rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          >
+                            {(conversionMap[d.input_format] || [d.output_format]).map(fmt => (
+                              <option key={fmt} value={fmt}>{fmt}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-2 py-2.5 text-center">
+                          <button
+                            onClick={() => handleDeleteDefaultFormat(d.input_format)}
+                            className="text-text-muted hover:text-primary transition-colors duration-150 p-1"
+                            title="Remove default"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {availableInputFormats.length > 0 ? (
+              <div className="flex items-center gap-3">
+                <select
+                  value={newInputFormat}
+                  onChange={e => { setNewInputFormat(e.target.value); setNewOutputFormat('') }}
+                  className="bg-surface-dark text-text border border-surface-light rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[140px]"
+                >
+                  <option value="">Input format...</option>
+                  {availableInputFormats.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-text-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                <select
+                  value={newOutputFormat}
+                  onChange={e => setNewOutputFormat(e.target.value)}
+                  disabled={!newInputFormat}
+                  className="bg-surface-dark text-text border border-surface-light rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[140px] disabled:opacity-50"
+                >
+                  <option value="">Output format...</option>
+                  {newOutputOptions.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddDefaultFormat}
+                  disabled={!newInputFormat || !newOutputFormat}
+                  className="bg-primary/20 hover:bg-primary/40 text-primary-light font-semibold py-2 px-4 rounded-lg transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
+            ) : defaultFormats.length > 0 ? (
+              <p className="text-text-muted text-sm">All available input formats have defaults configured.</p>
+            ) : (
+              <p className="text-text-muted text-sm">Loading available formats...</p>
+            )}
+          </section>
+
         </div>
 
       </div>

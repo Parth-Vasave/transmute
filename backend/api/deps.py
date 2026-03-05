@@ -1,6 +1,6 @@
 """FastAPI dependency injection functions for database connections."""
 from functools import lru_cache
-from db import FileDB, ConversionDB, ConversionRelationsDB, SettingsDB
+from db import FileDB, ConversionDB, ConversionRelationsDB, SettingsDB, DefaultFormatsDB
 
 
 @lru_cache(maxsize=1)
@@ -41,3 +41,13 @@ def get_conversion_relations_db() -> ConversionRelationsDB:
 def get_settings_db() -> SettingsDB:
     """Dependency that provides a shared SettingsDB instance."""
     return _settings_db()
+
+
+@lru_cache(maxsize=1)
+def _default_formats_db() -> DefaultFormatsDB:
+    return DefaultFormatsDB()
+
+
+def get_default_formats_db() -> DefaultFormatsDB:
+    """Dependency that provides a shared DefaultFormatsDB instance."""
+    return _default_formats_db()

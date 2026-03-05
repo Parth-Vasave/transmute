@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .routes import health, files, conversions, converters, jobs, docs, settings
+from .routes import health, files, conversions, converters, jobs, docs, settings, default_formats
 
 router = APIRouter()
 
@@ -10,4 +10,5 @@ router.include_router(conversions.router)
 router.include_router(converters.router)
 router.include_router(jobs.router)
 router.include_router(settings.router)
+router.include_router(default_formats.router)
 router.include_router(docs.router)
