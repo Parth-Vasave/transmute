@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
-import { FaArrowRightArrowLeft, FaClockRotateLeft, FaBook, FaFile, FaGear } from 'react-icons/fa6'
+import { FaArrowRightArrowLeft, FaClockRotateLeft, FaFile, FaGear } from 'react-icons/fa6'
 import { useTheme } from '../ThemeContext'
 
 function Header() {
@@ -57,14 +57,6 @@ function Header() {
             >
               <FaClockRotateLeft />
             </NavLink>
-            <a
-              href="/api/docs"
-              className="text-text hover:text-primary px-3 py-2 rounded-md text-xl font-medium transition duration-200"
-              title="API Docs"
-              aria-label="API Docs"
-            >
-              <FaBook />
-            </a>
             <NavLink
               to="/settings"
               className={({ isActive }) =>
