@@ -51,6 +51,13 @@ function useMediaControls(mediaRef: React.RefObject<HTMLMediaElement | null>) {
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
 
+  const setTrustedDuration = (d: number) => {
+    if (isFinite(d) && d > 0) {
+      setDuration(d)
+      durationRef.current = d
+    }
+  }
+
   const togglePlay = () => {
     const el = mediaRef.current
     if (!el) return
@@ -59,7 +66,13 @@ function useMediaControls(mediaRef: React.RefObject<HTMLMediaElement | null>) {
   }
 
   const handleTimeUpdate = () => {
-    if (!draggingRef.current && mediaRef.current) setCurrentTime(mediaRef.current.currentTime)
+    const el = mediaRef.current
+    if (!el) return
+    if (!draggingRef.current) setCurrentTime(el.currentTime)
+    // If currentTime exceeds reported duration, the duration was wrong — fix it
+    if (el.currentTime > durationRef.current && isFinite(el.currentTime)) {
+      setTrustedDuration(el.currentTime)
+    }
   }
 
   const seekToX = useCallback((clientX: number) => {
@@ -128,28 +141,35 @@ function useMediaControls(mediaRef: React.RefObject<HTMLMediaElement | null>) {
     setMuted(!muted)
   }
 
-  const onLoadedMetadata = () => {
-    if (mediaRef.current) {
-      setDuration(mediaRef.current.duration)
-      durationRef.current = mediaRef.current.duration
-    }
+  const updateDuration = () => {
+    const el = mediaRef.current
+    if (el) setTrustedDuration(el.duration)
   }
 
-  const onEnded = () => setPlaying(false)
+  const onEnded = () => {
+    const el = mediaRef.current
+    if (el) {
+      // On ended, currentTime is the real duration — trust it over the header
+      setTrustedDuration(el.currentTime)
+      setCurrentTime(el.currentTime)
+    }
+    setPlaying(false)
+  }
 
-  const progress = duration ? currentTime / duration : 0
+  const progress = duration ? Math.min(currentTime / duration, 1) : 0
 
   return {
     trackRef, volumeRef, playing, currentTime, duration, volume, muted, progress,
     togglePlay, handleTimeUpdate, handleSeekDown, handleVolumeDown, toggleMute,
-    onLoadedMetadata, onEnded,
+    updateDuration, onEnded,
   }
 }
 
-function MediaControlsBar({ controls, showFullscreen, onFullscreen }: {
+function MediaControlsBar({ controls, showFullscreen, onFullscreen, hideDuration }: {
   controls: ReturnType<typeof useMediaControls>
   showFullscreen?: boolean
   onFullscreen?: () => void
+  hideDuration?: boolean
 }) {
   const { trackRef, volumeRef, playing, currentTime, duration, volume, muted, progress,
     togglePlay, handleSeekDown, handleVolumeDown, toggleMute } = controls
@@ -182,7 +202,9 @@ function MediaControlsBar({ controls, showFullscreen, onFullscreen }: {
         </div>
       </div>
 
-      <span className="text-xs text-text-muted tabular-nums w-10 flex-shrink-0">{formatTime(duration)}</span>
+      {!hideDuration && (
+        <span className="text-xs text-text-muted tabular-nums w-10 flex-shrink-0">{formatTime(duration)}</span>
+      )}
 
       <button onClick={toggleMute} className="text-text-muted hover:text-text transition duration-200 flex-shrink-0">
         {muted || volume === 0 ? <FaVolumeMute /> : <FaVolumeUp />}
@@ -238,9 +260,10 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-function AudioPlayer({ src }: { src: string }) {
+function AudioPlayer({ src, mediaType }: { src: string; mediaType: string }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const controls = useMediaControls(audioRef)
+  const hideDuration = mediaType === 'aac'
 
   return (
     <div className="w-full">
@@ -248,10 +271,11 @@ function AudioPlayer({ src }: { src: string }) {
         ref={audioRef}
         src={src}
         onTimeUpdate={controls.handleTimeUpdate}
-        onLoadedMetadata={controls.onLoadedMetadata}
+        onLoadedMetadata={controls.updateDuration}
+        onDurationChange={controls.updateDuration}
         onEnded={controls.onEnded}
       />
-      <MediaControlsBar controls={controls} />
+      <MediaControlsBar controls={controls} hideDuration={hideDuration} />
     </div>
   )
 }
@@ -291,7 +315,8 @@ function VideoPlayer({ src }: { src: string }) {
         className={`cursor-pointer ${isFullscreen ? 'flex-1 w-full object-contain min-h-0' : 'max-w-[80vw] max-h-[65vh]'}`}
         onClick={controls.togglePlay}
         onTimeUpdate={controls.handleTimeUpdate}
-        onLoadedMetadata={controls.onLoadedMetadata}
+        onLoadedMetadata={controls.updateDuration}
+        onDurationChange={controls.updateDuration}
         onEnded={controls.onEnded}
       />
       <div className="w-full px-3 py-2 bg-surface-dark/80 flex-shrink-0">
@@ -375,7 +400,7 @@ function PreviewModal({ fileId, filename, mediaType, onClose }: PreviewModalProp
               <span className="text-sm text-text-muted font-medium text-center truncate max-w-full" title={filename}>
                 {filename}
               </span>
-              <AudioPlayer src={url} />
+              <AudioPlayer src={url} mediaType={mediaType} />
             </div>
           )}
           {previewType === 'pdf' && (
