@@ -15,11 +15,7 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/transmute-app/transmute?logo=github&logoColor=white&color=gray&cacheSeconds=14400)
 
 
-**Transmute** is a **free, open source, self-hosted file converter** built for privacy and flexibility. Convert **images, video, audio, documents, spreadsheets, subtitles, and fonts** entirely locally, with no file size limits, no account required, and no third-party access to your files. Deploy in seconds with Docker.
-
-> [!WARNING]
-> **Do not expose Transmute directly to the public internet or WAN.**
-> Transmute is currently intended for trusted local networks, homelabs, and private internal environments only. It does **not** yet provide the hardening expected for direct internet exposure, such as authentication, authorization, rate limiting, abuse protection, or multi-tenant isolation. If you run it outside a trusted network, place it behind your own access controls and network restrictions.
+**Transmute** is a **free, open source, self-hosted file converter** built for privacy and flexibility. Convert **images, video, audio, documents, spreadsheets, subtitles, and fonts** entirely locally, with no file size limits and no third-party access to your files. Deploy in seconds with Docker.
 
 This application is under active development. Want to support us? Give us a star or jump in and contribute!
 
@@ -40,6 +36,7 @@ Want to see a video demo? Check out our [YouTube](https://www.youtube.com/watch?
 - **Privacy first**: Files are processed on your own server and never sent to third parties
 - **No file size limits**: Convert files as large as your storage allows
 - **100+ formats supported**: Images, video, audio, documents, spreadsheets, subtitles, and fonts
+- **Built-in authentication**: User accounts, role-based access, and API key support out of the box
 - **Docker ready**: Deploy with a single command, no complex setup required
 - **REST API**: Automate and integrate file conversions via the built-in OpenAPI-documented API
 - **Multiple themes**: Seven built-in light and dark UI themes
@@ -51,13 +48,14 @@ Want to see a video demo? Check out our [YouTube](https://www.youtube.com/watch?
 </div>
  POST_GIF_MARKER -->
 
+> [!WARNING]
+> **Think carefully before exposing Transmute to the public internet / WAN.**
+> Transmute includes built-in authentication and per-user data isolation, but is designed for trusted networks. If you expose it beyond your LAN, place it behind a reverse proxy with TLS and rate limiting. The maintainers are not responsible for security issues arising from your deployment configuration.
+
 ## Quickstart
 ```bash
 wget "https://raw.githubusercontent.com/transmute-app/transmute/refs/heads/main/docker-compose.yml" && docker compose up -d
 ```
-
-> [!WARNING]
-> Bind Transmute only to networks you trust. Do not port-forward it to the internet, expose it directly through your router, or publish it on a public VPS without adding your own protective layer in front of it. There is currently no authentication or rate-limiting, and it allows uncontrolled file uploads. These features are in progress, but I want to make sure I implement them properly, so it is taking time.
 
 ## What Does Transmute Replace?
 *For the record, I love all of these services and use them all frequently. Transmute is not up to par with any of them yet. But it will be!*
