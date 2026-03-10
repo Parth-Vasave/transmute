@@ -22,9 +22,12 @@ PyMuPDF==1.25.5
 pymupdf4llm==0.0.17
 markdown==3.10.2
 pysubs2==1.8.0
+tomli_w==1.2.0
+pyreadstat==1.3.3
 fonttools==4.61.1
 brotli==1.2.0
 python-pptx==1.0.2
 bcrypt==5.0.0
 PyJWT==2.11.0
 pytest==9.0.2
+pyreadstat==1.3.3
