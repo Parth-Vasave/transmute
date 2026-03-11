@@ -69,8 +69,10 @@ conv-count: ## Count total conversations in the database
 # Build
 # ----------------------------------------------------------------------------
 
-build: ## Build the frontend for production
+build-frontend: ## Build the frontend for production
 	cd frontend && npm run build
+
+build: build-frontend ## Build all components (currently just frontend)
 
 # ----------------------------------------------------------------------------
 # Linting & Formatting
@@ -81,7 +83,18 @@ lint: lint-frontend ## Run all linters
 lint-frontend: ## Lint frontend code with ESLint
 	cd frontend && npm run lint
 
+
 check: lint ## Run all checks (alias for lint)
+
+# ----------------------------------------------------------------------------
+# Testing
+# ----------------------------------------------------------------------------
+
+test-backend: ## Run Python backend tests with pytest
+	$(PYTHON) -m pytest backend
+
+test-frontend: ## Run frontend tests with Vitest (not yet implemented) - cd frontend && npm run test
+	echo "Frontend tests not yet implemented. Tracked in issue #60."
 
 # ----------------------------------------------------------------------------
 # Docker
