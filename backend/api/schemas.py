@@ -9,11 +9,14 @@ class ConversionRequest(BaseModel):
 
 class FileMetadata(BaseModel):
     id: str = Field(..., example="123e4567-e89b-12d3-a456-426614174000")
+    storage_path: str = Field(..., example="data/uploads/6e36aefe-b129-436e-999d-f5037075c017.png")
     original_filename: str = Field(..., example="example.jpg")
     media_type: str = Field(..., example="jpg")
     extension: str = Field(..., example=".jpg")
     size_bytes: int = Field(..., example=204800)
     sha256_checksum: str = Field(..., example="abc123def456...")
+    user_id: str = Field(..., example="67118d71-a0c5-443c-80b5-e222bb63bfc2")
+    compatible_formats: list[str] = Field(..., example=["png", "gif", "webp"], description="List of compatible output formats")
 
 
 class FileMetadataWithFormats(FileMetadata):
