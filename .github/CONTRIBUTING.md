@@ -9,6 +9,8 @@ First off, thank you for your interest in contributing ❤️
 
 This project is intended to be a reliable, self-hosted tool, and contributions of all kinds are welcome: code, documentation, bug reports, ideas, and feedback.
 
+Want to instead contribute to our [website](https://transmute.sh)? Check out [transmute-app/transmute-app.github.io](https://github.com/transmute-app/transmute-app.github.io)
+
 > [!CAUTION]
 > ## No Autonomous Agents or Unreviewed AI Contributions
 >
