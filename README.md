@@ -64,7 +64,7 @@ wget "https://raw.githubusercontent.com/transmute-app/transmute/refs/heads/main/
 | ------- | --------------- |
 | [cloudconvert.com](https://cloudconvert.com/) |  File size limits, API is paid only, 3rd-party gets my files |
 | [freeconvert.com](https://www.freeconvert.com/) | File size limits, 3rd-party gets my files |
-| [cconvertio.co](https://convertio.co/) | File size limits, 3rd-party gets my files |
+| [convertio.co](https://convertio.co/) | File size limits, 3rd-party gets my files |
 
 ## Supported Formats
 
