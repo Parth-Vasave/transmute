@@ -8,6 +8,7 @@ import pandas as pd
 import pyreadstat
 import toons
 import tomli_w
+import vobject
 import yaml, json
 from typing import Optional
 from .converter_interface import ConverterInterface
@@ -54,6 +55,7 @@ class PandasConverter(ConverterInterface):
         'toml',
         'ini',
         'env',
+        'vcf',     # read-only (vCard contacts)
     }
     supported_output_formats: set = {
         'csv',
@@ -242,6 +244,26 @@ class PandasConverter(ConverterInterface):
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
             df = _structured_data_to_dataframe(data)
+        elif self.input_type == 'vcf':
+            with open(self.input_file, 'r', encoding='utf-8') as f:
+                vcards = list(vobject.readComponents(f.read()))
+            rows = []
+            for vc in vcards:
+                row = {}
+                for field_name, field_items in vc.contents.items():
+                    if field_name == 'version':
+                        continue
+                    for item in field_items:
+                        val = item.value
+                        if field_name == 'n':
+                            row['last_name'] = val.family or ''
+                            row['first_name'] = val.given or ''
+                        elif field_name == 'categories':
+                            row['categories'] = ', '.join(val) if isinstance(val, list) else str(val)
+                        else:
+                            row[field_name] = str(val)
+                rows.append(row)
+            df = pd.DataFrame(rows)
         
         # Write DataFrame to output format
         if self.output_type == 'csv':

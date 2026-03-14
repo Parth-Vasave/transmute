@@ -29,5 +29,6 @@ pyyaml==6.0.3
 tomli_w==1.2.0
 toons==0.5.3   # See https://github.com/alesanfra/toons/issues/10
 uvicorn==0.41.0
+vobject==0.9.9
 weasyprint==68.1
 xlrd==2.0.2
