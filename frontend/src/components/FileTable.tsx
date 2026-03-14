@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FaCheckSquare, FaSquare, FaSort, FaSortUp, FaSortDown, FaDownload, FaTrash, FaEye } from 'react-icons/fa'
+import { stripExtension } from '../utils/filename'
 
 export interface FileInfo {
   id: string
@@ -119,8 +120,7 @@ function FileTable({
   const getDisplayFilename = (row: FileTableRow) => {
     const name = row.file.original_filename || 'download'
     if (isPending || !row.conversion) return name
-    const dot = name.lastIndexOf('.')
-    const base = dot > 0 ? name.substring(0, dot) : name
+    const base = stripExtension(name)
     return base + (row.conversion.extension || '')
   }
 

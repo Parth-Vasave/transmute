@@ -4,6 +4,7 @@ import FileTable, { FileInfo, ConversionInfo } from '../components/FileTable'
 import PreviewModal, { isPreviewable } from '../components/PreviewModal'
 import { authFetch as fetch } from '../utils/api'
 import { downloadBlob } from '../utils/download'
+import { stripExtension } from '../utils/filename'
 
 interface PendingFile {
   file: FileInfo
@@ -318,11 +319,7 @@ function Converter() {
       const response = await fetch(`/api/files/${conversion.id}`)
       if (!response.ok) throw new Error('Download failed')
 
-      let filename = conversion.original_filename || 'download'
-      const lastDotIndex = filename.lastIndexOf('.')
-      if (lastDotIndex > 0) {
-        filename = filename.substring(0, lastDotIndex)
-      }
+      let filename = stripExtension(conversion.original_filename || 'download')
       filename += conversion.extension || ''
       
       const blob = await response.blob();
@@ -563,7 +560,7 @@ function Converter() {
                 conversion: cc.conversion,
                 onDownload: () => handleDownload(cc.conversion),
                 onDelete: () => handleDelete(cc.file.id, false),
-                onPreview: isPreviewable(cc.conversion.media_type) ? () => { const name = cc.file.original_filename || 'download'; const dot = name.lastIndexOf('.'); const base = dot > 0 ? name.substring(0, dot) : name; setPreviewFile({ id: cc.conversion.id, filename: base + (cc.conversion.extension || ''), mediaType: cc.conversion.media_type }) } : undefined,
+                onPreview: isPreviewable(cc.conversion.media_type) ? () => { const name = cc.file.original_filename || 'download'; const base = stripExtension(name); setPreviewFile({ id: cc.conversion.id, filename: base + (cc.conversion.extension || ''), mediaType: cc.conversion.media_type }) } : undefined,
                 isDeleting: deletingId === cc.file.id,
                 isDownloading: downloadingId === cc.conversion.id,
               }))}
