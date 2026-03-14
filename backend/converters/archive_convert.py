@@ -291,11 +291,20 @@ class ArchiveConverter(ConverterInterface):
                     zipf.writestr(member.filename, file_data)
         return output_file
 
+    def _safe_extract_7z(self, sz: py7zr.SevenZipFile, dest: str) -> None:
+        """Extract a 7z archive, rejecting members with path traversal."""
+        for entry in sz.list():
+            resolved = os.path.realpath(os.path.join(dest, entry.filename))
+            if not resolved.startswith(os.path.realpath(dest) + os.sep) and resolved != os.path.realpath(dest):
+                raise ValueError(f"Path traversal detected in 7z member: {entry.filename}")
+        # If we get here, all members are safe to extract
+        sz.extractall(path=dest)  # nosec B202
+
     def convert_7z_to_zip(self, output_file: str) -> str:
         """Convert a 7z archive to ZIP format."""
         with tempfile.TemporaryDirectory(dir=get_settings().tmp_dir) as tmp:
             with py7zr.SevenZipFile(self.input_file, 'r') as sz:
-                sz.extractall(path=tmp)
+                self._safe_extract_7z(sz, tmp)
             with zipfile.ZipFile(output_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for root, _dirs, files in os.walk(tmp):
                     for fname in files:
@@ -310,7 +319,7 @@ class ArchiveConverter(ConverterInterface):
             raise ValueError(f"Unsupported compression type for TAR output: {compression_type}")
         with tempfile.TemporaryDirectory(dir=get_settings().tmp_dir) as tmp:
             with py7zr.SevenZipFile(self.input_file, 'r') as sz:
-                sz.extractall(path=tmp)
+                self._safe_extract_7z(sz, tmp)
             with self._open_tar_for_writing(output_file, compression_type) as tar:
                 for root, _dirs, files in os.walk(tmp):
                     for fname in files:
@@ -339,7 +348,7 @@ class ArchiveConverter(ConverterInterface):
                         continue
                     source = tar.extractfile(member)
                     if source is not None:
-                        sz.writef(source, member.name)
+                        sz.writef(io.BytesIO(source.read()), member.name)
         return output_file
 
     def convert_rar_to_7z(self, output_file: str) -> str:
