@@ -36,19 +36,8 @@ concurrency:
   cancel-in-progress: ${{ inputs.version_tag == '' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  security-scan:
-    name: Security Scan
-    uses: ./.github/workflows/scout-scan.yml
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PUBLIC_RO_TOKEN: ${{ secrets.DOCKER_PUBLIC_RO_TOKEN }}
-    permissions:
-      contents: read
-      security-events: write
-
   build:
     name: Build (${{ matrix.platform }})
-    needs: security-scan
     strategy:
       fail-fast: false
       matrix:
@@ -158,6 +147,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      security-events: write
 
     steps:
       - name: Checkout Repository
@@ -304,3 +294,20 @@ jobs:
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.manifest.outputs.digest }}
+
+      - name: Run Docker Scout Scan
+        id: scout-scan
+        uses: docker/scout-action@f8c776824083494ab0d56b8105ba2ca85c86e4de  # v1.18.2
+        with:
+          command: cves
+          image: ghcr.io/${{ github.repository }}:${{ inputs.version_tag != '' && steps.meta_release.outputs.version || steps.meta_push.outputs.version }}
+          sarif-file: ${{ runner.temp }}/scout-critical-high.sarif
+          write-comment: false
+          only-severities: critical,high
+
+      - name: Upload Scout results to GitHub Advanced Security
+        uses: github/codeql-action/upload-sarif@9e907b5e64f6b83e7804b09294d44122997950d6  # v4.32.3
+        if: steps.scout-scan.outcome != 'skipped' && steps.scout-scan.outcome != 'cancelled'
+        with:
+          sarif_file: ${{ runner.temp }}/scout-critical-high.sarif
+          category: docker-scout-critical-high
