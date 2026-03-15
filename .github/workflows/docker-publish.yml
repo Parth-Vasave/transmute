@@ -298,13 +298,13 @@ jobs:
         with:
           command: cves
           image: ghcr.io/${{ github.repository }}:${{ inputs.version_tag != '' && steps.meta_release.outputs.version || steps.meta_push.outputs.version }}
-          sarif-file: ${{ runner.temp }}/scout-critical-high.sarif
+          sarif-file: ${{ runner.temp }}/scout-critical-high-medium.sarif
           write-comment: false
-          only-severities: critical,high
+          only-severities: critical,high,medium
 
       - name: Upload Scout results to GitHub Advanced Security
         uses: github/codeql-action/upload-sarif@9e907b5e64f6b83e7804b09294d44122997950d6  # v4.32.3
         if: steps.scout-scan.outcome != 'skipped' && steps.scout-scan.outcome != 'cancelled'
         with:
-          sarif_file: ${{ runner.temp }}/scout-critical-high.sarif
-          category: docker-scout-critical-high
+          sarif_file: ${{ runner.temp }}/scout-critical-high-medium.sarif
+          category: docker-scout-critical-high-medium

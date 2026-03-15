@@ -12,12 +12,15 @@ RUN npm run build
 FROM python:3.13-slim
 
 ARG BUILD_VERSION="dev"
+ARG CALIBRE_VERSION="9.5.0"
 ARG PANDOC_VERSION="3.9"
 
 # Set working directory
 WORKDIR /app
 
 ENV APP_VERSION=$BUILD_VERSION
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 # Install python dependencies
 COPY requirements.txt .
@@ -30,6 +33,7 @@ RUN apt-get update && \
     ffmpeg \
     libsm6 \
     libxext6 \
+    libopengl0 \
     libmagic1 \
     wget \
     xvfb \
@@ -40,10 +44,10 @@ RUN apt-get update && \
     libcairo2 \
     librsvg2-bin \
     tar \
+    xz-utils \
     unar \
     libreoffice-impress \
     libreoffice-common \
-    calibre \
     && rm -rf /var/lib/apt/lists/*
 
 
@@ -77,6 +81,20 @@ RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
     apt-get update && apt-get install -y /tmp/drawio.deb && \
     rm /tmp/drawio.deb && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Calibre from upstream GitHub releases to avoid stale distro packages.
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+    case "$ARCH" in \
+      amd64) CALIBRE_ARCH="x86_64" ;; \
+      arm64) CALIBRE_ARCH="arm64" ;; \
+      *) echo "Unsupported architecture for calibre: $ARCH" >&2; exit 1 ;; \
+    esac && \
+    CALIBRE_URL="https://github.com/kovidgoyal/calibre/releases/download/v${CALIBRE_VERSION}/calibre-${CALIBRE_VERSION}-${CALIBRE_ARCH}.txz" && \
+    wget -q "$CALIBRE_URL" -O /tmp/calibre.txz && \
+    mkdir -p /opt/calibre && \
+    tar -xJf /tmp/calibre.txz -C /opt/calibre && \
+    ln -sf /opt/calibre/ebook-convert /usr/bin/ebook-convert && \
+    rm -f /tmp/calibre.txz
 
 # Security patches: upgrade vulnerable packages to patched versions
 RUN apt-get update && \
